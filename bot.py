@@ -2,7 +2,11 @@ from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart,Command
 from aiogram import F
-from aiogram.types import Message,CallbackQuery
+from aiogram.types import (Message,InlineQuery,InlineKeyboardButton,
+                           InlineQueryResultArticle,InputTextMessageContent,
+                           InlineQueryResultPhoto,InputMediaPhoto,)
+from aiogram.types.inline_query_result_photo import InlineQueryResultType
+from search_images import fetch_inline_search_images
 from data import config
 import asyncio
 import logging
@@ -14,7 +18,6 @@ from filters.check_sub_channel import IsCheckSubChannels
 from keyboard_buttons import admin_keyboard
 from aiogram.fsm.context import FSMContext #new
 from states.reklama import Adverts
-from aiogram.types import InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 import time 
 ADMINS = config.ADMINS
@@ -35,6 +38,50 @@ async def start_command(message:Message):
         await message.answer(text="Assalomu alaykum, botimizga hush kelibsiz")
     except:
         await message.answer(text="Assalomu alaykum")
+
+
+
+@dp.inline_query()
+async def inline_search(inline_query: InlineQuery):
+    
+    #artikl yuborish
+    # result =[
+    #     InlineQueryResultArticle(
+    #         id="1",
+    #         title="Sifat",
+    #         input_message_content=InputTextMessageContent(
+    #             message_text="Bu sifat o'quv markazi. Navoiyda joylashgan"
+    #         ),
+    #         description="Ajoyib o'quv markazi"
+    #     ),
+    #     InlineQueryResultArticle(
+    #         id="2",
+    #         title="IT IELTS SCHOOL",
+    #         input_message_content=InputTextMessageContent(
+    #             message_text="Bu IT IELTS SCHOOL o'quv markazi. Navoiyda joylashgan"
+    #         ),
+    #         description="THE BEST"
+    #     )
+    # ]
+
+    try:
+        text = inline_query.query
+        photos = await fetch_inline_search_images(text, count=20)
+
+        results = [
+            InlineQueryResultPhoto(
+                id=str(i),
+                photo_url=img,
+                thumbnail_url=img
+            )
+            for i, img in enumerate(photos)
+        ]
+
+        await inline_query.answer(results=results)
+
+    except Exception as e:
+        print(f"Xatolik: {e}")
+
 
 
 @dp.message(IsCheckSubChannels())
