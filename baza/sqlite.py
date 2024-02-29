@@ -75,6 +75,43 @@ class Database:
         return self.execute("SELECT telegram_id FROM Users;", fetchall=True)
 
 
+
+#audiolar bazasi
+    def create_table_audios(self):
+        sql = """
+        CREATE TABLE IF NOT EXISTS Audio(
+        id INTEGER PRIMARY KEY,
+        voice_file_id VARCHAR(50),
+        title VARCHAR(20) 
+           );
+              """
+        self.execute(sql, commit=True)
+
+    def add_audio(self, voice_file_id:str,title:str):
+
+        sql = """
+        INSERT INTO Audio(voice_file_id, title) VALUES(?, ?)
+        """
+        self.execute(sql, parameters=(voice_file_id, title), commit=True)
+
+    async def select_all_audios(self):
+        sql = """
+        SELECT * FROM Audio
+        """
+        return self.execute(sql, fetchall=True)
+
+    async def search_audios_title(self,title):
+        sql = f"""
+        SELECT * FROM Audio WHERE title LIKE "%{title}%"
+        """
+        return self.execute(sql, fetchall=True)
+
+
+
+
+
+
+
 def logger(statement):
     print(f"""
 _____________________________________________________        

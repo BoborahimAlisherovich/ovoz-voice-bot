@@ -4,7 +4,7 @@ from aiogram.filters import CommandStart,Command
 from aiogram import F
 from aiogram.types import (Message,InlineQuery,InlineKeyboardButton,
                            InlineQueryResultArticle,InputTextMessageContent,
-                           InlineQueryResultPhoto,InputMediaPhoto,)
+                           InlineQueryResultPhoto,InputMediaPhoto,InlineQueryResultCachedVoice)
 from aiogram.types.inline_query_result_photo import InlineQueryResultType
 from search_images import fetch_inline_search_images
 from data import config
@@ -17,7 +17,7 @@ from filters.admin import IsBotAdminFilter
 from filters.check_sub_channel import IsCheckSubChannels
 from keyboard_buttons import admin_keyboard
 from aiogram.fsm.context import FSMContext #new
-from states.reklama import Adverts
+from states.reklama import Adverts, AudioState
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 import time 
 ADMINS = config.ADMINS
@@ -40,6 +40,28 @@ async def start_command(message:Message):
         await message.answer(text="Assalomu alaykum")
 
 
+# import pprint
+# @dp.message()
+# async def get_file_id(message:Message):
+#     audio_id = message.voice.file_id
+#     # pprint.pprint(audio_id)
+#     await message.answer(f"file_id = {audio_id}")
+
+
+@dp.inline_query()
+async def inline_voice_search(inline_query: InlineQuery):
+    title = inline_query.query
+    audiolar = await db.search_audios_title(title)
+
+    results = [
+        InlineQueryResultCachedVoice(
+            id=f"{audio[0]}",
+            voice_file_id=audio[1],
+            title=audio[2]
+        ) for audio in audiolar[:10]
+    ]
+    await inline_query.answer(results=results)
+    
 
 @dp.inline_query()
 async def inline_search(inline_query: InlineQuery):
@@ -133,6 +155,30 @@ async def send_advert(message:Message,state:FSMContext):
 
 
 
+#audio qo'shish
+
+@dp.message(F.text=="audio qo'shish",IsBotAdminFilter(ADMINS))
+async def auido_adds(message:Message,state:FSMContext):
+    await message.answer("Audio nomini kiriting")
+    await state.set_state(AudioState.title)
+
+@dp.message(F.text,AudioState.title)
+async def auido_title(message:Message,state:FSMContext):
+    await message.answer("Audio yuboring")
+    title = message.text
+    await state.set_state(AudioState.voice_file_id)
+    await state.update_data(title=title)
+
+@dp.message(F.voice,AudioState.voice_file_id)
+async def auido_voice(message:Message,state:FSMContext):
+    data = await state.get_data()
+    title = data.get("title")
+    voice_file_id = message.voice.file_id
+    db.add_audio(voice_file_id=voice_file_id,title=title)
+
+    await message.answer("Audio muvaffaqiyatli bazaga qo'shildi")
+    await state.clear()
+
 
 @dp.startup()
 async def on_startup_notify(bot: Bot):
@@ -166,6 +212,7 @@ async def main() -> None:
     bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
     db = Database(path_to_db="data/main.db")
     db.create_table_users()
+    db.create_table_audios()
     await set_default_commands(bot)
     await dp.start_polling(bot)
     setup_middlewares(dispatcher=dp, bot=bot)
